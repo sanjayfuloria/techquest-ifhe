@@ -1372,7 +1372,7 @@
       adaptiveState.lastDifficulty = q.difficulty || 'easy';
 
       // Prefetch next AI question in background (only after Q1)
-      if (quizState.currentIdx >= 0 && true // proxy handles auth server-side) {
+      if (quizState.currentIdx >= 0) { // proxy handles auth server-side
         prefetchNextQuestion();
       }
     }
@@ -1380,7 +1380,7 @@
     async function nextQuestion() {
       quizState.currentIdx++;
       // After Q1, try to inject an AI-generated question
-      if (quizState.currentIdx >= 1 && true // proxy handles auth server-side) {
+      if (quizState.currentIdx >= 1) { // proxy handles auth server-side
         if (adaptiveState.generatedQuestions.length > 0) {
           // Use pre-fetched question
           const aiQ = adaptiveState.generatedQuestions.shift();
