@@ -2061,31 +2061,71 @@
 
     async function showDeletePanel() {
       const panel = document.getElementById('delete-panel');
-      const list = document.getElementById('delete-list');
       panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
       if (panel.style.display === 'none') return;
+      await refreshDeleteList();
+    }
+
+    async function refreshDeleteList() {
+      const list = document.getElementById('delete-list');
       list.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Loading...</div>';
       const snap = await db.collection('users').get();
-      const all = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name?.localeCompare(b.name||'')||0);
-      list.innerHTML = all.map(u=>`
-        <div style="display:flex; align-items:center; justify-content:space-between; background:var(--surface2); padding:8px 12px; border-radius:8px;">
-          <div>
-            <span style="font-size:13px; font-weight:600;">${u.name||'Unknown'}</span>
-            <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">${u.role||'participant'} · ${u.score||0} pts · ${u.answered||0}/30</span>
-          </div>
-          <button onclick="deleteParticipant('${u.id}','${(u.name||'').replace(/'/g,"\'")}','${u.role||'participant'}')"
-            style="background:#7f1d1d; color:#fca5a5; border:1px solid #991b1b; padding:4px 10px; border-radius:6px; font-size:11px; cursor:pointer;">
-            Delete
+      const all = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+      list.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <label style="font-size:12px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this.checked)" style="cursor:pointer;">
+            Select All
+          </label>
+          <button onclick="deleteSelected()" style="background:#7f1d1d; color:#fca5a5; border:1px solid #991b1b; padding:5px 14px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600;">
+            🗑️ Delete Selected
           </button>
+        </div>` +
+        all.map(u=>`
+        <div style="display:flex; align-items:center; gap:10px; background:var(--surface2); padding:8px 12px; border-radius:8px; margin-bottom:4px;">
+          <input type="checkbox" class="delete-cb" value="${u.id}" data-name="${(u.name||'').replace(/"/g,'&quot;')}"
+            style="cursor:pointer; width:16px; height:16px; flex-shrink:0;">
+          <div style="flex:1;">
+            <span style="font-size:13px; font-weight:600;">${u.name||'Unknown'}</span>
+            <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">${u.role||'participant'} · ${u.score||0} pts · ${u.answered||0}/30 answered</span>
+          </div>
         </div>`).join('');
     }
 
-    async function deleteParticipant(uid, name, role) {
-      if (!confirm(`Delete "${name}" (${role})? This cannot be undone.`)) return;
+    function toggleSelectAll(checked) {
+      document.querySelectorAll('.delete-cb').forEach(cb => cb.checked = checked);
+    }
+
+    async function deleteSelected() {
+      const checkboxes = [...document.querySelectorAll('.delete-cb:checked')];
+      if (checkboxes.length === 0) { showToast('No entries selected.', 'info', 'ℹ️'); return; }
+      const names = checkboxes.map(cb => cb.dataset.name).join(', ');
+      if (!confirm(`Delete ${checkboxes.length} entr${checkboxes.length===1?'y':'ies'}?
+
+${names}
+
+This cannot be undone.`)) return;
+      try {
+        let deleted = 0;
+        for (const cb of checkboxes) {
+          await db.collection('users').doc(cb.value).delete();
+          deleted++;
+        }
+        showToast(`✅ Deleted ${deleted} entr${deleted===1?'y':'ies'}`, 'success', '🗑️');
+        await refreshDeleteList();
+        loadInstructorPanel();
+        loadLeaderboard();
+      } catch(e) {
+        showToast('Error: ' + e.message, 'error', '❌');
+      }
+    }
+
+    async function deleteParticipant(uid, name) {
+      if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
       try {
         await db.collection('users').doc(uid).delete();
         showToast(`✅ Deleted ${name}`, 'success', '🗑️');
-        showDeletePanel(); // refresh list
+        await refreshDeleteList();
         loadInstructorPanel();
         loadLeaderboard();
       } catch(e) {
@@ -2185,4 +2225,4 @@
     document.getElementById('nav').classList.remove('show');
   </script>
 </body>
-</html>bust
+</html>
