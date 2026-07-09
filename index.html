@@ -919,6 +919,9 @@
           <p style="color:var(--text-muted); font-size:13px;">Manage the session, monitor participants, and view analytics</p>
         </div>
 
+        <div style="margin-bottom:12px;">
+          <button onclick="repairAnsweredCounts()" class="btn btn-secondary" style="font-size:12px; padding:6px 14px;">🔧 Fix Answered Counts (cap at 30)</button>
+        </div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;" class="instructor-top-grid">
           
           <!-- Session Control -->
@@ -1026,7 +1029,7 @@
 
 
     <!-- ===== SLIDES VIEWER PAGE ===== -->
-    <div id="page-slides" class="page">
+    <div id="page-slides" class="page" tabindex="0" style="outline:none;">
       <div class="container" style="max-width:900px; padding:20px 16px;">
 
         <!-- Header -->
@@ -1170,7 +1173,7 @@
       if (pageId === 'page-leaderboard') loadLeaderboard();
       if (pageId === 'page-instructor') { loadInstructorPanel(); generateSessionCode(); }
       if (pageId === 'page-dashboard') renderDashboard();
-      if (pageId === 'page-slides') { renderSlide(currentSlide); }
+      if (pageId === 'page-slides') { renderSlide(currentSlide); setTimeout(()=>{ document.getElementById('page-slides').focus(); }, 100); }
     }
 
     function showAuth(role) {
@@ -1997,12 +2000,43 @@
 
     // Keyboard navigation
     document.addEventListener('keydown', e => {
-      if (document.getElementById('page-slides').classList.contains('active')) {
-        if (e.key==='ArrowRight'||e.key==='ArrowDown') nextSlide();
-        if (e.key==='ArrowLeft'||e.key==='ArrowUp') prevSlide();
-      }
+      const slidesPage = document.getElementById('page-slides');
+      if (!slidesPage || !slidesPage.classList.contains('active')) return;
+      if (e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' ') { e.preventDefault(); nextSlide(); }
+      if (e.key==='ArrowLeft'||e.key==='ArrowUp') { e.preventDefault(); prevSlide(); }
     });
 
+    // Also add swipe support for mobile
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener('touchend', e => {
+      const slidesPage = document.getElementById('page-slides');
+      if (!slidesPage || !slidesPage.classList.contains('active')) return;
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) { if (diff > 0) nextSlide(); else prevSlide(); }
+    });
+
+
+
+    async function repairAnsweredCounts() {
+      if (!confirm('This will cap all participants answered count to max 30. Continue?')) return;
+      try {
+        const snap = await db.collection('users').get();
+        const participants = snap.docs.filter(d => d.data().role === 'participant');
+        let fixed = 0;
+        for (const doc of participants) {
+          const data = doc.data();
+          if ((data.answered || 0) > 30) {
+            await db.collection('users').doc(doc.id).update({ answered: 30 });
+            fixed++;
+          }
+        }
+        showToast(`✅ Fixed ${fixed} participant(s). Reload to see changes.`, 'success', '🔧');
+        loadInstructorPanel();
+      } catch(e) {
+        showToast('Error: ' + e.message, 'error', '❌');
+      }
+    }
 
     // ===== LEADERBOARD =====
     async function loadLeaderboard() {
