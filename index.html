@@ -827,7 +827,7 @@
 
         <div id="ai-loading-card" class="ai-loading-card" style="display:none;">
           <div class="ai-spinner"></div>
-          <div class="ai-loading-label">Generating your next question with <span>GLM 5.2</span>...</div>
+          <div class="ai-loading-label">Generating your next question with <span>AI</span>...</div>
           <div class="ai-badge">🧠 Adaptive Difficulty</div>
         </div>
 
@@ -1385,7 +1385,7 @@
           // Use pre-fetched question
           const aiQ = adaptiveState.generatedQuestions.shift();
           quizState.questions.splice(quizState.currentIdx, 0, aiQ);
-          showToast('🧠 Adaptive question from GLM 5.2', 'info', '🧠');
+          showToast('🧠 Adaptive question generated for you!', 'info', '🧠');
         } else {
           // Show loading while we generate one on-demand
           const zone = quizState.currentZone;
@@ -1407,7 +1407,7 @@
             try {
               const aiQ = await generateAdaptiveQuestion(zone, perfSummary);
               quizState.questions.splice(quizState.currentIdx, 0, aiQ);
-              showToast('🧠 Adaptive question from GLM 5.2', 'info', '🧠');
+              showToast('🧠 Adaptive question generated for you!', 'info', '🧠');
             } catch(e) {
               console.warn('On-demand AI question failed, using static:', e.message);
             }
