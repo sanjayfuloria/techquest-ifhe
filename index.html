@@ -2020,20 +2020,29 @@
 
 
     async function repairAnsweredCounts() {
-      if (!confirm('This will cap all participants answered count to max 30. Continue?')) return;
+      if (!confirm('This will cap answered and correct counts to max 30 for all participants. Continue?')) return;
       try {
         const snap = await db.collection('users').get();
         const participants = snap.docs.filter(d => d.data().role === 'participant');
         let fixed = 0;
         for (const doc of participants) {
           const data = doc.data();
-          if ((data.answered || 0) > 30) {
-            await db.collection('users').doc(doc.id).update({ answered: 30 });
+          const needsFix = (data.answered || 0) > 30 || (data.correct || 0) > 30;
+          if (needsFix) {
+            const newAnswered = Math.min(data.answered || 0, 30);
+            const newCorrect = Math.min(data.correct || 0, 30);
+            const newAccuracy = newAnswered > 0 ? Math.round((newCorrect / newAnswered) * 100) : 0;
+            await db.collection('users').doc(doc.id).update({
+              answered: newAnswered,
+              correct: newCorrect,
+              accuracy: newAccuracy
+            });
             fixed++;
           }
         }
         showToast(`✅ Fixed ${fixed} participant(s). Reload to see changes.`, 'success', '🔧');
         loadInstructorPanel();
+        loadLeaderboard();
       } catch(e) {
         showToast('Error: ' + e.message, 'error', '❌');
       }
