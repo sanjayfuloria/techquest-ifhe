@@ -2063,11 +2063,11 @@
     async function loadInstructorPanel() {
       try {
         const snap = await db.collection('users').get();
-        const participants = snap.docs.map(d=>d.data()).filter(u=>u.role==='participant').sort((a,b)=>(b.score||0)-(a.score||0));
+        const participants = snap.docs.map(d=>d.data()).filter(u=>u.role==='participant');
         document.getElementById('participant-count').textContent = participants.length;
         const list = document.getElementById('participants-list');
         list.innerHTML = participants.length===0 ? '<div style="color:var(--text-dim);font-size:13px;">No participants yet. Share the session code!</div>' :
-          participants.slice(0,10).map((p,i)=>'<div class="participant-item"><div class="participant-dot"></div><span class="participant-name">'+(i<3?['🥇','🥈','🥉'][i]:(i+1)+'. ')+p.name+'</span><span class="participant-status">'+(p.answered||0)+'/30 · '+(p.score||0).toLocaleString()+' pts</span></div>').join('');
+          participants.slice(0,10).map(p=>'<div class="participant-item"><div class="participant-dot"></div><span class="participant-name">'+p.name+'</span><span class="participant-status">'+(p.answered||0)+'/30 · '+(p.score||0).toLocaleString()+' pts</span></div>').join('');
         const lbBody = document.getElementById('inst-lb-body');
         lbBody.innerHTML = participants.length===0 ? '<div class="loading">Waiting for participants...</div>' :
           participants.slice(0,10).map((u,i)=>'<div class="lb-row"><div class="lb-rank">'+(i<3?['🥇','🥈','🥉'][i]:i+1)+'</div><div class="lb-name"><div class="lb-avatar">'+getInitials(u.name)+'</div><div class="lb-name-text">'+u.name+'</div></div><div class="lb-score">'+(u.score||0).toLocaleString()+'</div><div class="lb-acc">'+(u.accuracy||0)+'%</div><div class="lb-badges">'+Array(Math.min((u.badges||[]).length,5)).fill('🏅').join('')+'</div></div>').join('');
