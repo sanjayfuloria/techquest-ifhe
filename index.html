@@ -1219,22 +1219,9 @@
             }
           });
         })
-        .then(async () => {
+        .then(() => {
           closeModal();
-          // Navigate directly — don't wait for onAuthStateChanged
-          const user = auth.currentUser;
-          if (user) {
-            const snap = await db.collection('users').doc(user.uid).get();
-            if (snap.exists) {
-              userProfile = snap.data();
-              userRole = userProfile.role || 'participant';
-              currentUser = user;
-              setupNav(userRole);
-              setupNavUser(userProfile);
-              if (userRole === 'instructor') { goToPage('page-instructor'); }
-              else { goToPage('page-dashboard'); renderDashboard(); }
-            }
-          }
+          // onAuthStateChanged will handle navigation
         })
         .catch(e => {
           errEl.textContent = e.message.replace('Firebase: ','').replace('(auth/wrong-password).','').replace('(auth/invalid-credential).','Invalid email or password.');
@@ -1250,9 +1237,6 @@
     // ===== AUTH STATE =====
     auth.onAuthStateChanged(async user => {
       if (user) {
-        // Only handle navigation here on page load (refresh)
-        // Direct login navigation is handled in handleAuth()
-        if (currentUser) return; // already handled by handleAuth
         currentUser = user;
         const snap = await db.collection('users').doc(user.uid).get();
         if (snap.exists) {
