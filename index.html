@@ -1272,8 +1272,8 @@
       const links = document.getElementById('nav-links');
       links.innerHTML = '';
       const pages = role === 'instructor'
-        ? [['🎓 Panel','page-instructor'],['🏆 Board','page-leaderboard']]
-        : [['🗺️ Map','page-dashboard'],['🏆 Board','page-leaderboard']];
+        ? [['🎓 Panel','page-instructor'],['📋 Slides','page-slides'],['🏆 Board','page-leaderboard']]
+        : [['🗺️ Map','page-dashboard'],['📋 Slides','page-slides'],['🏆 Board','page-leaderboard']];
       pages.forEach(function(item) {
         var btn = document.createElement('button');
         btn.className = 'nav-btn';
@@ -1490,7 +1490,7 @@
       const newAnswered = [...(zpz.answered||[]), ...quizState.questions.map(q=>q.id)];
       const newDone = newAnswered.length;
       const newBadges = [...quizState.sessionBadges];
-      const totalAnswered = (profile.answered||0)+quizState.questions.length;
+      const totalAnswered = Math.min(30, (profile.answered||0)+quizState.questions.filter(q=>!q.isAIGenerated).length);
       const totalCorrect = (profile.correct||0)+quizState.correct;
       if (totalAnswered>=15 && !(profile.badges||[]).includes('halfway')) newBadges.push('halfway');
       if (totalAnswered>=30 && !(profile.badges||[]).includes('champion')) { newBadges.push('champion'); showToast('🏆 TechQuest Champion! All 30 questions done!','success','🏆'); }
