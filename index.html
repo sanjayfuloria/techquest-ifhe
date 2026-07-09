@@ -921,8 +921,17 @@
           <p style="color:var(--text-muted); font-size:13px;">Manage the session, monitor participants, and view analytics</p>
         </div>
 
-        <div style="margin-bottom:12px;">
-          <button onclick="repairAnsweredCounts()" class="btn btn-secondary" style="font-size:12px; padding:6px 14px;">🔧 Fix Answered Counts (cap at 30)</button>
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; margin-bottom:16px;">
+          <div style="font-size:12px; font-family:var(--font-mono); color:var(--text-muted); margin-bottom:12px; letter-spacing:0.06em;">⚙️ PARTICIPANT MANAGEMENT</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+            <button onclick="repairAnsweredCounts()" class="btn btn-secondary" style="font-size:12px; padding:6px 14px;">🔧 Fix Data (cap at 30)</button>
+            <button onclick="showDeletePanel()" class="btn btn-secondary" style="font-size:12px; padding:6px 14px;">🗑️ Delete Entry</button>
+            <button onclick="resetAllParticipants()" class="btn btn-secondary" style="font-size:12px; padding:6px 14px; color:#f87171; border-color:#f87171;">♻️ Reset All for Fresh Class</button>
+          </div>
+          <div id="delete-panel" style="display:none; margin-top:8px;">
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Select participant to delete:</div>
+            <div id="delete-list" style="display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto;"></div>
+          </div>
         </div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;" class="instructor-top-grid">
           
@@ -2041,7 +2050,64 @@
             fixed++;
           }
         }
-        showToast(`✅ Fixed ${fixed} participant(s). Reload to see changes.`, 'success', '🔧');
+        showToast(`✅ Fixed ${fixed} participant(s).`, 'success', '🔧');
+        loadInstructorPanel();
+        loadLeaderboard();
+      } catch(e) {
+        showToast('Error: ' + e.message, 'error', '❌');
+      }
+    }
+
+
+    async function showDeletePanel() {
+      const panel = document.getElementById('delete-panel');
+      const list = document.getElementById('delete-list');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'none') return;
+      list.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Loading...</div>';
+      const snap = await db.collection('users').get();
+      const all = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name?.localeCompare(b.name||'')||0);
+      list.innerHTML = all.map(u=>`
+        <div style="display:flex; align-items:center; justify-content:space-between; background:var(--surface2); padding:8px 12px; border-radius:8px;">
+          <div>
+            <span style="font-size:13px; font-weight:600;">${u.name||'Unknown'}</span>
+            <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">${u.role||'participant'} · ${u.score||0} pts · ${u.answered||0}/30</span>
+          </div>
+          <button onclick="deleteParticipant('${u.id}','${(u.name||'').replace(/'/g,"\'")}','${u.role||'participant'}')"
+            style="background:#7f1d1d; color:#fca5a5; border:1px solid #991b1b; padding:4px 10px; border-radius:6px; font-size:11px; cursor:pointer;">
+            Delete
+          </button>
+        </div>`).join('');
+    }
+
+    async function deleteParticipant(uid, name, role) {
+      if (!confirm(`Delete "${name}" (${role})? This cannot be undone.`)) return;
+      try {
+        await db.collection('users').doc(uid).delete();
+        showToast(`✅ Deleted ${name}`, 'success', '🗑️');
+        showDeletePanel(); // refresh list
+        loadInstructorPanel();
+        loadLeaderboard();
+      } catch(e) {
+        showToast('Error: ' + e.message, 'error', '❌');
+      }
+    }
+
+    async function resetAllParticipants() {
+      if (!confirm('⚠️ This will reset ALL participant scores, progress and badges to zero for a fresh class. Instructor accounts are NOT affected. Are you absolutely sure?')) return;
+      if (!confirm('Last chance — this CANNOT be undone. Reset all participants?')) return;
+      try {
+        const snap = await db.collection('users').get();
+        const participants = snap.docs.filter(d => d.data().role === 'participant');
+        let count = 0;
+        for (const doc of participants) {
+          await db.collection('users').doc(doc.id).update({
+            score: 0, correct: 0, answered: 0, accuracy: 0,
+            badges: ['pioneer'], zoneProgress: {}, streak: 0
+          });
+          count++;
+        }
+        showToast(`✅ Reset ${count} participants. Ready for fresh class!`, 'success', '♻️');
         loadInstructorPanel();
         loadLeaderboard();
       } catch(e) {
